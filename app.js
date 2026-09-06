@@ -1,4 +1,4 @@
-const CLIENT_ID = 'Yb05bb916d20b4b39a3b1bc6371040d44'; // Replace with your ID
+const CLIENT_ID = 'b05bb916d20b4b39a3b1bc6371040d44'; // Replace with your ID
 const REDIRECT_URI = window.location.origin + window.location.pathname; // Auto-detects GitHub Pages URL
 
 // PKCE Crypto Helpers
