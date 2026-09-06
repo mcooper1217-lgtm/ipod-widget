@@ -8,27 +8,35 @@
 </head>
 <body>
   <div class="ipod">
-    <!-- Screen Display -->
+    <!-- Left Screen Display -->
     <div class="screen">
-      <div class="header">iPod</div>
-      <div class="status-container">
-        <p id="track-name" style="font-weight: bold;">Not Playing</p>
-        <p id="artist-name" style="font-size: 10px; color: #333;"></p>
+      <div class="header">
+        <span>Now Playing</span>
+        <span id="battery">🔋</span>
       </div>
-      <button id="login-btn" class="login-btn" onclick="loginWithSpotify()">Connect Spotify</button>
+      
+      <div class="screen-content">
+        <div class="album-art-container">
+          <img id="album-art" src="https://via.placeholder.com/100" alt="Album Art" />
+        </div>
+        <div class="song-details">
+          <p id="track-name">Not Playing</p>
+          <p id="artist-name">Connect Spotify</p>
+          <button id="login-btn" class="login-btn" onclick="loginWithSpotify()">Connect</button>
+        </div>
+      </div>
     </div>
 
-    <!-- Click Wheel Controls -->
-   <div class="wheel">
-  <!-- MENU triggers full refresh/sync of active player device -->
-  <button class="wheel-btn menu-btn" onclick="syncDeviceAndPlay()">MENU</button>
-  <button class="wheel-btn prev-btn" onclick="previousTrack()">⏮</button>
-  <button class="wheel-btn next-btn" onclick="nextTrack()">⏭</button>
-  <button class="wheel-btn play-btn" onclick="togglePlay()">⏯</button>
-  
-  <!-- Center button triggers instant track details refresh -->
-  <div class="center-btn" onclick="getCurrentlyPlaying()"></div>
-</div>
+    <!-- Right Click Wheel -->
+    <div class="wheel">
+      <button class="wheel-btn menu-btn" onclick="syncDeviceAndPlay()">MENU</button>
+      <button class="wheel-btn prev-btn" onclick="previousTrack()">⏮</button>
+      <button class="wheel-btn next-btn" onclick="nextTrack()">⏭</button>
+      <button class="wheel-btn play-btn" onclick="togglePlay()">⏯</button>
+      <div class="center-btn" onclick="getCurrentlyPlaying()"></div>
+    </div>
+  </div>
+
   <script src="app.js"></script>
 </body>
 </html>
