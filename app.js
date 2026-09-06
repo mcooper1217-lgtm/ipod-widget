@@ -1,4 +1,4 @@
-const CLIENT_ID = 'b05bb916d20b4b39a3b1bc6371040d44'; // Replace with your ID
+const CLIENT_ID = '6deaf4e348c54584aa56fe560fb2c264'; // Replace with your ID
 const REDIRECT_URI = https://mcooper1217-lgtm.github.io/ipod-widget/; // Auto-detects GitHub Pages URL
 
 // PKCE Crypto Helpers
