@@ -99,3 +99,64 @@ function updateUIAuthorized() {
 }
 
 document.addEventListener('DOMContentLoaded', handleCallback);
+// Helper for Spotify API requests
+async function spotifyFetch(endpoint, method = 'GET') {
+  const token = localStorage.getItem('access_token');
+  if (!token) return;
+
+  try {
+    const res = await fetch(`https://api.spotify.com/v1/me/player/${endpoint}`, {
+      method: method,
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (res.status === 200) {
+      return await res.json();
+    }
+  } catch (err) {
+    console.error('API Error:', err);
+  }
+}
+
+// Fetch currently playing track metadata
+async function getCurrentlyPlaying() {
+  const data = await spotifyFetch('currently-playing');
+  if (data && data.item) {
+    document.getElementById('track-name').innerText = data.item.name;
+    document.getElementById('artist-name').innerText = data.item.artists.map(a => a.name).join(', ');
+  } else {
+    document.getElementById('track-name').innerText = 'Nothing Playing';
+    document.getElementById('artist-name').innerText = 'Open Spotify on phone/PC';
+  }
+}
+
+// Playback Actions
+async function togglePlay() {
+  const data = await spotifyFetch('');
+  if (data && data.is_playing) {
+    await spotifyFetch('pause', 'PUT');
+  } else {
+    await spotifyFetch('play', 'PUT');
+  }
+  setTimeout(getCurrentlyPlaying, 500);
+}
+
+async function nextTrack() {
+  await spotifyFetch('next', 'POST');
+  setTimeout(getCurrentlyPlaying, 500);
+}
+
+async function previousTrack() {
+  await spotifyFetch('previous', 'POST');
+  setTimeout(getCurrentlyPlaying, 500);
+}
+
+// Auto-refresh song info every 5 seconds when authorized
+function updateUIAuthorized() {
+  document.getElementById('auth-status').style.display = 'none';
+  document.getElementById('login-btn').style.display = 'none';
+  getCurrentlyPlaying();
+  setInterval(getCurrentlyPlaying, 5000);
+}
