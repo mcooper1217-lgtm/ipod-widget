@@ -12,16 +12,19 @@
     <div class="screen">
       <div class="header">iPod</div>
       <div class="status-container">
-        <p id="auth-status">Status: Disconnected</p>
-        <p id="track-name">Not Playing</p>
-        <p id="artist-name"></p>
+        <p id="track-name" style="font-weight: bold;">Not Playing</p>
+        <p id="artist-name" style="font-size: 10px; color: #333;"></p>
       </div>
       <button id="login-btn" class="login-btn" onclick="loginWithSpotify()">Connect Spotify</button>
     </div>
 
-    <!-- Click Wheel Placeholder -->
+    <!-- Click Wheel Controls -->
     <div class="wheel">
-      <div class="center-btn"></div>
+      <button class="wheel-btn menu-btn" onclick="getCurrentlyPlaying()">MENU</button>
+      <button class="wheel-btn prev-btn" onclick="previousTrack()">⏮</button>
+      <button class="wheel-btn next-btn" onclick="nextTrack()">⏭</button>
+      <button class="wheel-btn play-btn" onclick="togglePlay()">⏯</button>
+      <div class="center-btn" onclick="getCurrentlyPlaying()"></div>
     </div>
   </div>
 
