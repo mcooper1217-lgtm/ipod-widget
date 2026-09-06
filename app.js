@@ -1,5 +1,5 @@
-const CLIENT_ID = '6deaf4e348c54584aa56fe560fb2c264'; // Replace with your ID
-const REDIRECT_URI = 'https://mcooper1217-lgtm.github.io/ipod-widget/'; // Auto-detects GitHub Pages URL
+const CLIENT_ID = '6deaf4e348c54584aa56fe560fb2c264';
+const REDIRECT_URI = 'https://mcooper1217-lgtm.github.io/ipod-widget/';
 
 // PKCE Crypto Helpers
 function generateRandomString(length) {
@@ -74,7 +74,6 @@ async function handleCallback() {
       localStorage.setItem('refresh_token', data.refresh_token);
       localStorage.setItem('expires_at', Date.now() + (data.expires_in * 1000));
 
-      // Clear code from URL bar
       window.history.replaceState({}, document.title, window.location.pathname);
       updateUIAuthorized();
     }
@@ -83,7 +82,7 @@ async function handleCallback() {
   }
 }
 
-// Check if user is already logged in
+// Check existing login
 function checkExistingToken() {
   const token = localStorage.getItem('access_token');
   const expiresAt = localStorage.getItem('expires_at');
@@ -94,14 +93,17 @@ function checkExistingToken() {
 }
 
 function updateUIAuthorized() {
-  document.getElementById('auth-status').innerText = 'Status: Connected';
-  document.getElementById('login-btn').style.display = 'none';
+  const loginBtn = document.getElementById('login-btn');
+  if (loginBtn) {
+    loginBtn.style.display = 'none';
+  }
+  getCurrentlyPlaying();
+  setInterval(getCurrentlyPlaying, 5000);
 }
 
 document.addEventListener('DOMContentLoaded', handleCallback);
 
-// Helper for Spotify API requests
-// Updated helper to safely parse empty 204 responses
+// Safe Spotify API Request Helper
 async function spotifyFetch(endpoint, method = 'GET', body = null) {
   const token = localStorage.getItem('access_token');
   if (!token) return;
@@ -118,36 +120,35 @@ async function spotifyFetch(endpoint, method = 'GET', body = null) {
 
     const res = await fetch(`https://api.spotify.com/v1/me/player/${endpoint}`, options);
 
-    // Return JSON if status is 200 OK
+    if (res.status === 204) {
+      return true;
+    }
+
     if (res.status === 200) {
       return await res.json();
     }
-    return true; // Return true for 204 No Content success responses
+
+    if (res.status === 401) {
+      localStorage.removeItem('access_token');
+      location.reload();
+    }
   } catch (err) {
     console.error('API Error:', err);
   }
 }
 
-// Updated toggle function
-async function togglePlay() {
-  const data = await spotifyFetch(''); // Fetch current player state
-  
-  if (data && data.is_playing) {
-    await spotifyFetch('pause', 'PUT');
-  } else {
-    await spotifyFetch('play', 'PUT');
-  }
-  setTimeout(getCurrentlyPlaying, 300);
-}
 // Fetch currently playing track metadata
 async function getCurrentlyPlaying() {
   const data = await spotifyFetch('currently-playing');
+  const trackElem = document.getElementById('track-name');
+  const artistElem = document.getElementById('artist-name');
+
   if (data && data.item) {
-    document.getElementById('track-name').innerText = data.item.name;
-    document.getElementById('artist-name').innerText = data.item.artists.map(a => a.name).join(', ');
+    if (trackElem) trackElem.innerText = data.item.name;
+    if (artistElem) artistElem.innerText = data.item.artists.map(a => a.name).join(', ');
   } else {
-    document.getElementById('track-name').innerText = 'Nothing Playing';
-    document.getElementById('artist-name').innerText = 'Open Spotify on phone/PC';
+    if (trackElem) trackElem.innerText = 'Nothing Playing';
+    if (artistElem) artistElem.innerText = 'Open Spotify on phone/PC';
   }
 }
 
@@ -172,48 +173,17 @@ async function previousTrack() {
   setTimeout(getCurrentlyPlaying, 500);
 }
 
-// Auto-refresh song info every 5 seconds when authorized
-function updateUIAuthorized() {
-  const loginBtn = document.getElementById('login-btn');
-  if (loginBtn) {
-    loginBtn.style.display = 'none';
-  }
-  getCurrentlyPlaying();
-  setInterval(getCurrentlyPlaying, 5000);
-}
-// Updated helper for Spotify API requests
-async function spotifyFetch(endpoint, method = 'GET', body = null) {
-  const token = localStorage.getItem('access_token');
-  if (!token) return;
+// Sync device function for MENU button
+async function syncDeviceAndPlay() {
+  const data = await spotifyFetch('devices');
+  const artistElem = document.getElementById('artist-name');
+  const trackElem = document.getElementById('track-name');
 
-  try {
-    const options = {
-      method: method,
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    };
-    if (body) options.body = JSON.stringify(body);
-
-    const res = await fetch(`https://api.spotify.com/v1/me/player/${endpoint}`, options);
-
-    // 204 No Content means request succeeded with an empty body (e.g., play/pause/skip)
-    if (res.status === 204) {
-      return true;
-    }
-
-    // 200 OK contains JSON data (e.g., currently-playing info)
-    if (res.status === 200) {
-      return await res.json();
-    }
-
-    // Handle token expiration or unauthorized requests
-    if (res.status === 401) {
-      localStorage.removeItem('access_token');
-      location.reload();
-    }
-  } catch (err) {
-    console.error('API Error:', err);
+  if (data && data.devices && data.devices.length > 0) {
+    const activeDevice = data.devices.find(d => d.is_active) || data.devices[0];
+    if (artistElem) artistElem.innerText = `Device: ${activeDevice.name}`;
+  } else {
+    if (trackElem) trackElem.innerText = 'No Active Device';
+    if (artistElem) artistElem.innerText = 'Open Spotify on Phone/PC';
   }
 }
