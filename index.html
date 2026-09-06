@@ -19,15 +19,16 @@
     </div>
 
     <!-- Click Wheel Controls -->
-    <div class="wheel">
-      <button class="wheel-btn menu-btn" onclick="getCurrentlyPlaying()">MENU</button>
-      <button class="wheel-btn prev-btn" onclick="previousTrack()">⏮</button>
-      <button class="wheel-btn next-btn" onclick="nextTrack()">⏭</button>
-      <button class="wheel-btn play-btn" onclick="togglePlay()">⏯</button>
-      <div class="center-btn" onclick="getCurrentlyPlaying()"></div>
-    </div>
-  </div>
-
+   <div class="wheel">
+  <!-- MENU triggers full refresh/sync of active player device -->
+  <button class="wheel-btn menu-btn" onclick="syncDeviceAndPlay()">MENU</button>
+  <button class="wheel-btn prev-btn" onclick="previousTrack()">⏮</button>
+  <button class="wheel-btn next-btn" onclick="nextTrack()">⏭</button>
+  <button class="wheel-btn play-btn" onclick="togglePlay()">⏯</button>
+  
+  <!-- Center button triggers instant track details refresh -->
+  <div class="center-btn" onclick="getCurrentlyPlaying()"></div>
+</div>
   <script src="app.js"></script>
 </body>
 </html>
