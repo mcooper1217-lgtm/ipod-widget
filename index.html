@@ -1,1 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>iPod Spotify Widget</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="ipod">
+    <!-- Screen Display -->
+    <div class="screen">
+      <div class="header">iPod</div>
+      <div class="status-container">
+        <p id="auth-status">Status: Disconnected</p>
+        <p id="track-name">Not Playing</p>
+        <p id="artist-name"></p>
+      </div>
+      <button id="login-btn" class="login-btn" onclick="loginWithSpotify()">Connect Spotify</button>
+    </div>
 
+    <!-- Click Wheel Placeholder -->
+    <div class="wheel">
+      <div class="center-btn"></div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
