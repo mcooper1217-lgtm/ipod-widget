@@ -99,6 +99,7 @@ function updateUIAuthorized() {
 }
 
 document.addEventListener('DOMContentLoaded', handleCallback);
+
 // Helper for Spotify API requests
 async function spotifyFetch(endpoint, method = 'GET') {
   const token = localStorage.getItem('access_token');
@@ -155,8 +156,10 @@ async function previousTrack() {
 
 // Auto-refresh song info every 5 seconds when authorized
 function updateUIAuthorized() {
-  document.getElementById('auth-status').style.display = 'none';
-  document.getElementById('login-btn').style.display = 'none';
+  const loginBtn = document.getElementById('login-btn');
+  if (loginBtn) {
+    loginBtn.style.display = 'none';
+  }
   getCurrentlyPlaying();
   setInterval(getCurrentlyPlaying, 5000);
 }
