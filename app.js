@@ -1,5 +1,5 @@
 const CLIENT_ID = '6deaf4e348c54584aa56fe560fb2c264'; // Replace with your ID
-const REDIRECT_URI = https://mcooper1217-lgtm.github.io/ipod-widget/; // Auto-detects GitHub Pages URL
+const REDIRECT_URI = 'https://mcooper1217-lgtm.github.io/ipod-widget/'; // Auto-detects GitHub Pages URL
 
 // PKCE Crypto Helpers
 function generateRandomString(length) {
