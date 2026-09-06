@@ -137,15 +137,21 @@ async function spotifyFetch(endpoint, method = 'GET', body = null) {
   }
 }
 
-// Fetch currently playing track metadata
+// Fetch currently playing track metadata & album cover art
 async function getCurrentlyPlaying() {
   const data = await spotifyFetch('currently-playing');
   const trackElem = document.getElementById('track-name');
   const artistElem = document.getElementById('artist-name');
+  const albumArtElem = document.getElementById('album-art');
 
   if (data && data.item) {
     if (trackElem) trackElem.innerText = data.item.name;
     if (artistElem) artistElem.innerText = data.item.artists.map(a => a.name).join(', ');
+    
+    // Set Spotify Album Art (Index 1 is typically ~300x300 image size)
+    if (albumArtElem && data.item.album.images.length > 0) {
+      albumArtElem.src = data.item.album.images[1]?.url || data.item.album.images[0]?.url;
+    }
   } else {
     if (trackElem) trackElem.innerText = 'Nothing Playing';
     if (artistElem) artistElem.innerText = 'Open Spotify on phone/PC';
