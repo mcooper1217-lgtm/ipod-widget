@@ -82,13 +82,19 @@ async function handleCallback() {
     const data = await response.json();
 
     if (data.access_token) {
+      // Save tokens in current context
       localStorage.setItem('access_token', data.access_token);
       localStorage.setItem('refresh_token', data.refresh_token);
       localStorage.setItem('expires_at', Date.now() + (data.expires_in * 1000));
 
-      // If running inside the popup, notify the parent widget window and close popup
+      // Send tokens directly to the Notion widget iframe via postMessage
       if (window.opener) {
-        window.opener.postMessage('spotify_authenticated', '*');
+        window.opener.postMessage({
+          type: 'spotify_auth_success',
+          access_token: data.access_token,
+          refresh_token: data.refresh_token,
+          expires_in: data.expires_in
+        }, '*');
         window.close();
       } else {
         window.history.replaceState({}, document.title, window.location.pathname);
@@ -100,12 +106,20 @@ async function handleCallback() {
   }
 }
 
-// Listen for message from authentication popup window
+// Listen for message from popup and save tokens inside the Notion iframe
 window.addEventListener('message', (event) => {
-  if (event.data === 'spotify_authenticated') {
+  if (event.data && event.data.type === 'spotify_auth_success') {
+    const { access_token, refresh_token, expires_in } = event.data;
+    
+    // Write tokens directly into the iframe's localStorage context
+    localStorage.setItem('access_token', access_token);
+    localStorage.setItem('refresh_token', refresh_token);
+    localStorage.setItem('expires_at', Date.now() + (expires_in * 1000));
+
     updateUIAuthorized();
   }
 });
+
 // Check existing login
 function checkExistingToken() {
   const token = localStorage.getItem('access_token');
@@ -122,7 +136,11 @@ function updateUIAuthorized() {
     loginBtn.style.display = 'none';
   }
   getCurrentlyPlaying();
-  setInterval(getCurrentlyPlaying, 5000);
+  
+  // Ensure we don't start multiple intervals if called multiple times
+  if (!window.playingInterval) {
+    window.playingInterval = setInterval(getCurrentlyPlaying, 5000);
+  }
 }
 
 document.addEventListener('DOMContentLoaded', handleCallback);
