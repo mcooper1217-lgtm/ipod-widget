@@ -86,14 +86,26 @@ async function handleCallback() {
       localStorage.setItem('refresh_token', data.refresh_token);
       localStorage.setItem('expires_at', Date.now() + (data.expires_in * 1000));
 
-      window.history.replaceState({}, document.title, window.location.pathname);
-      updateUIAuthorized();
+      // If running inside the popup, notify the parent widget window and close popup
+      if (window.opener) {
+        window.opener.postMessage('spotify_authenticated', '*');
+        window.close();
+      } else {
+        window.history.replaceState({}, document.title, window.location.pathname);
+        updateUIAuthorized();
+      }
     }
   } catch (err) {
     console.error('Error exchanging token:', err);
   }
 }
 
+// Listen for message from authentication popup window
+window.addEventListener('message', (event) => {
+  if (event.data === 'spotify_authenticated') {
+    updateUIAuthorized();
+  }
+});
 // Check existing login
 function checkExistingToken() {
   const token = localStorage.getItem('access_token');
