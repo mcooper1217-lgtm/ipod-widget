@@ -181,14 +181,39 @@ function updateUIAuthorized() {
   getCurrentlyPlaying();
   setInterval(getCurrentlyPlaying, 5000);
 }
-// Force Spotify player sync on MENU click
-async function syncDeviceAndPlay() {
-  const data = await spotifyFetch('devices');
-  if (data && data.devices && data.devices.length > 0) {
-    const activeDevice = data.devices.find(d => d.is_active) || data.devices[0];
-    document.getElementById('artist-name').innerText = `Device: ${activeDevice.name}`;
-  } else {
-    document.getElementById('track-name').innerText = 'No Active Device';
-    document.getElementById('artist-name').innerText = 'Open Spotify on Phone/PC';
+// Updated helper for Spotify API requests
+async function spotifyFetch(endpoint, method = 'GET', body = null) {
+  const token = localStorage.getItem('access_token');
+  if (!token) return;
+
+  try {
+    const options = {
+      method: method,
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    };
+    if (body) options.body = JSON.stringify(body);
+
+    const res = await fetch(`https://api.spotify.com/v1/me/player/${endpoint}`, options);
+
+    // 204 No Content means request succeeded with an empty body (e.g., play/pause/skip)
+    if (res.status === 204) {
+      return true;
+    }
+
+    // 200 OK contains JSON data (e.g., currently-playing info)
+    if (res.status === 200) {
+      return await res.json();
+    }
+
+    // Handle token expiration or unauthorized requests
+    if (res.status === 401) {
+      localStorage.removeItem('access_token');
+      location.reload();
+    }
+  } catch (err) {
+    console.error('API Error:', err);
   }
 }
