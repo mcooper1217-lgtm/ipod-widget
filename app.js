@@ -21,7 +21,7 @@ function base64encode(input) {
     .replace(/\//g, '_');
 }
 
-// 1. Redirect to Spotify Auth
+// 1. Redirect to Spotify Auth via Popup Window
 async function loginWithSpotify() {
   const codeVerifier = generateRandomString(64);
   const hashed = await sha256(codeVerifier);
@@ -38,7 +38,19 @@ async function loginWithSpotify() {
     redirect_uri: REDIRECT_URI,
   });
 
-  window.location.href = `https://accounts.spotify.com/authorize?${params.toString()}`;
+  const authUrl = `https://accounts.spotify.com/authorize?${params.toString()}`;
+
+  // Open login in a popup window to bypass iframe restriction
+  const width = 450;
+  const height = 730;
+  const left = (window.screen.width / 2) - (width / 2);
+  const top = (window.screen.height / 2) - (height / 2);
+
+  window.open(
+    authUrl,
+    'SpotifyLogin',
+    `width=${width},height=${height},top=${top},left=${left}`
+  );
 }
 
 // 2. Handle Auth Code Callback
