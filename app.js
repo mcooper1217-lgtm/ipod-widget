@@ -101,26 +101,44 @@ function updateUIAuthorized() {
 document.addEventListener('DOMContentLoaded', handleCallback);
 
 // Helper for Spotify API requests
-async function spotifyFetch(endpoint, method = 'GET') {
+// Updated helper to safely parse empty 204 responses
+async function spotifyFetch(endpoint, method = 'GET', body = null) {
   const token = localStorage.getItem('access_token');
   if (!token) return;
 
   try {
-    const res = await fetch(`https://api.spotify.com/v1/me/player/${endpoint}`, {
+    const options = {
       method: method,
       headers: {
-        'Authorization': `Bearer ${token}`
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
       }
-    });
+    };
+    if (body) options.body = JSON.stringify(body);
 
+    const res = await fetch(`https://api.spotify.com/v1/me/player/${endpoint}`, options);
+
+    // Return JSON if status is 200 OK
     if (res.status === 200) {
       return await res.json();
     }
+    return true; // Return true for 204 No Content success responses
   } catch (err) {
     console.error('API Error:', err);
   }
 }
 
+// Updated toggle function
+async function togglePlay() {
+  const data = await spotifyFetch(''); // Fetch current player state
+  
+  if (data && data.is_playing) {
+    await spotifyFetch('pause', 'PUT');
+  } else {
+    await spotifyFetch('play', 'PUT');
+  }
+  setTimeout(getCurrentlyPlaying, 300);
+}
 // Fetch currently playing track metadata
 async function getCurrentlyPlaying() {
   const data = await spotifyFetch('currently-playing');
