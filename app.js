@@ -181,3 +181,14 @@ function updateUIAuthorized() {
   getCurrentlyPlaying();
   setInterval(getCurrentlyPlaying, 5000);
 }
+// Force Spotify player sync on MENU click
+async function syncDeviceAndPlay() {
+  const data = await spotifyFetch('devices');
+  if (data && data.devices && data.devices.length > 0) {
+    const activeDevice = data.devices.find(d => d.is_active) || data.devices[0];
+    document.getElementById('artist-name').innerText = `Device: ${activeDevice.name}`;
+  } else {
+    document.getElementById('track-name').innerText = 'No Active Device';
+    document.getElementById('artist-name').innerText = 'Open Spotify on Phone/PC';
+  }
+}
