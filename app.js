@@ -21,13 +21,14 @@ function base64encode(input) {
     .replace(/\//g, '_');
 }
 
-// 1. Redirect to Spotify Auth via Popup Window
+// 1. Open Auth Popup
 async function loginWithSpotify() {
   const codeVerifier = generateRandomString(64);
   const hashed = await sha256(codeVerifier);
   const codeChallenge = base64encode(hashed);
 
   localStorage.setItem('code_verifier', codeVerifier);
+  sessionStorage.setItem('code_verifier', codeVerifier);
 
   const params = new URLSearchParams({
     response_type: 'code',
@@ -40,7 +41,6 @@ async function loginWithSpotify() {
 
   const authUrl = `https://accounts.spotify.com/authorize?${params.toString()}`;
 
-  // Open login in a popup window to bypass iframe restriction
   const width = 450;
   const height = 730;
   const left = (window.screen.width / 2) - (width / 2);
@@ -58,12 +58,13 @@ async function handleCallback() {
   const urlParams = new URLSearchParams(window.location.search);
   const code = urlParams.get('code');
 
+  // If there is no code in URL, check if we already have an active token saved
   if (!code) {
     checkExistingToken();
     return;
   }
 
-  const codeVerifier = localStorage.getItem('code_verifier');
+  const codeVerifier = localStorage.getItem('code_verifier') || sessionStorage.getItem('code_verifier');
 
   const payload = {
     method: 'POST',
@@ -82,12 +83,7 @@ async function handleCallback() {
     const data = await response.json();
 
     if (data.access_token) {
-      // Save tokens in current context
-      localStorage.setItem('access_token', data.access_token);
-      localStorage.setItem('refresh_token', data.refresh_token);
-      localStorage.setItem('expires_at', Date.now() + (data.expires_in * 1000));
-
-      // Send tokens directly to the Notion widget iframe via postMessage
+      // If running inside the popup, transmit tokens to parent iframe & immediately close
       if (window.opener) {
         window.opener.postMessage({
           type: 'spotify_auth_success',
@@ -95,23 +91,31 @@ async function handleCallback() {
           refresh_token: data.refresh_token,
           expires_in: data.expires_in
         }, '*');
-        window.close();
-      } else {
+        
+        // Clear query parameters and close window
         window.history.replaceState({}, document.title, window.location.pathname);
-        updateUIAuthorized();
+        window.close();
+        return;
       }
+
+      // Fallback if not in a popup
+      localStorage.setItem('access_token', data.access_token);
+      localStorage.setItem('refresh_token', data.refresh_token);
+      localStorage.setItem('expires_at', Date.now() + (data.expires_in * 1000));
+      window.history.replaceState({}, document.title, window.location.pathname);
+      updateUIAuthorized();
     }
   } catch (err) {
     console.error('Error exchanging token:', err);
   }
 }
 
-// Listen for message from popup and save tokens inside the Notion iframe
+// Listen for token message sent from popup window to embedded iframe
 window.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'spotify_auth_success') {
     const { access_token, refresh_token, expires_in } = event.data;
-    
-    // Write tokens directly into the iframe's localStorage context
+
+    // Save received tokens inside the Notion iframe's scope
     localStorage.setItem('access_token', access_token);
     localStorage.setItem('refresh_token', refresh_token);
     localStorage.setItem('expires_at', Date.now() + (expires_in * 1000));
@@ -136,8 +140,7 @@ function updateUIAuthorized() {
     loginBtn.style.display = 'none';
   }
   getCurrentlyPlaying();
-  
-  // Ensure we don't start multiple intervals if called multiple times
+
   if (!window.playingInterval) {
     window.playingInterval = setInterval(getCurrentlyPlaying, 5000);
   }
@@ -189,8 +192,7 @@ async function getCurrentlyPlaying() {
   if (data && data.item) {
     if (trackElem) trackElem.innerText = data.item.name;
     if (artistElem) artistElem.innerText = data.item.artists.map(a => a.name).join(', ');
-    
-    // Set Spotify Album Art (Index 1 is typically ~300x300 image size)
+
     if (albumArtElem && data.item.album.images.length > 0) {
       albumArtElem.src = data.item.album.images[1]?.url || data.item.album.images[0]?.url;
     }
