@@ -97,7 +97,7 @@ async function handleCallback() {
       // Save directly to localStorage to trigger storage events
       localStorage.setItem('access_token', data.access_token);
       localStorage.setItem('refresh_token', data.refresh_token);
-      localStorage.setItem('expires_at', Date.now() + (data.expires_in * 1000));
+      localStorage.setItem('expires_at', String(Date.now() + (data.expires_in * 1000)));
 
       // Attempt postMessage fallback
       if (window.opener) {
@@ -121,6 +121,7 @@ async function handleCallback() {
 // Listen for messages via BroadcastChannel
 authChannel.onmessage = (event) => {
   if (event.data && event.data.type === 'spotify_auth_success') {
+    console.log('Received auth via BroadcastChannel', event.data);
     applyAuthData(event.data);
   }
 };
@@ -128,21 +129,38 @@ authChannel.onmessage = (event) => {
 // Listen for localStorage changes across windows/frames
 window.addEventListener('storage', (event) => {
   if (event.key === 'access_token' && event.newValue) {
+    console.log('storage event detected, access_token changed');
     updateUIAuthorized();
+  }
+});
+
+// NEW: Listen for postMessage from popup (fallback path used by popup)
+window.addEventListener('message', (event) => {
+  // Optional: verify origin to be more secure:
+  // const allowedOrigins = ['https://mcooper1217-lgtm.github.io'];
+  // if (!allowedOrigins.includes(event.origin)) return;
+
+  if (!event.data) return;
+
+  // event.data should be an object already (popup posts an object)
+  const data = event.data;
+  if (data.type === 'spotify_auth_success') {
+    console.log('Received auth via postMessage', data, 'origin:', event.origin);
+    applyAuthData(data);
   }
 });
 
 function applyAuthData(data) {
   localStorage.setItem('access_token', data.access_token);
   localStorage.setItem('refresh_token', data.refresh_token);
-  localStorage.setItem('expires_at', Date.now() + (data.expires_in * 1000));
+  localStorage.setItem('expires_at', String(Date.now() + (data.expires_in * 1000)));
   updateUIAuthorized();
 }
 
 // Check existing login
 function checkExistingToken() {
   const token = localStorage.getItem('access_token');
-  const expiresAt = localStorage.getItem('expires_at');
+  const expiresAt = parseInt(localStorage.getItem('expires_at'), 10) || 0;
 
   if (token && Date.now() < expiresAt) {
     updateUIAuthorized();
