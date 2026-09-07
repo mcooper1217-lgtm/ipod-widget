@@ -1,6 +1,9 @@
 const CLIENT_ID = '6deaf4e348c54584aa56fe560fb2c264';
 const REDIRECT_URI = 'https://mcooper1217-lgtm.github.io/ipod-widget/';
 
+// Setup Broadcast Channel for cross-window communication in Notion
+const authChannel = new BroadcastChannel('spotify_auth_channel');
+
 // PKCE Crypto Helpers
 function generateRandomString(length) {
   const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
@@ -21,14 +24,13 @@ function base64encode(input) {
     .replace(/\//g, '_');
 }
 
-// 1. Open Auth Popup
+// 1. Redirect to Spotify Auth via Popup Window
 async function loginWithSpotify() {
   const codeVerifier = generateRandomString(64);
   const hashed = await sha256(codeVerifier);
   const codeChallenge = base64encode(hashed);
 
   localStorage.setItem('code_verifier', codeVerifier);
-  sessionStorage.setItem('code_verifier', codeVerifier);
 
   const params = new URLSearchParams({
     response_type: 'code',
@@ -58,13 +60,12 @@ async function handleCallback() {
   const urlParams = new URLSearchParams(window.location.search);
   const code = urlParams.get('code');
 
-  // If there is no code in URL, check if we already have an active token saved
   if (!code) {
     checkExistingToken();
     return;
   }
 
-  const codeVerifier = localStorage.getItem('code_verifier') || sessionStorage.getItem('code_verifier');
+  const codeVerifier = localStorage.getItem('code_verifier');
 
   const payload = {
     method: 'POST',
@@ -83,46 +84,60 @@ async function handleCallback() {
     const data = await response.json();
 
     if (data.access_token) {
-      // If running inside the popup, transmit tokens to parent iframe & immediately close
-      if (window.opener) {
-        window.opener.postMessage({
-          type: 'spotify_auth_success',
-          access_token: data.access_token,
-          refresh_token: data.refresh_token,
-          expires_in: data.expires_in
-        }, '*');
-        
-        // Clear query parameters and close window
-        window.history.replaceState({}, document.title, window.location.pathname);
-        window.close();
-        return;
-      }
+      const authData = {
+        type: 'spotify_auth_success',
+        access_token: data.access_token,
+        refresh_token: data.refresh_token,
+        expires_in: data.expires_in
+      };
 
-      // Fallback if not in a popup
+      // Broadcast tokens over BroadcastChannel
+      authChannel.postMessage(authData);
+
+      // Save directly to localStorage to trigger storage events
       localStorage.setItem('access_token', data.access_token);
       localStorage.setItem('refresh_token', data.refresh_token);
       localStorage.setItem('expires_at', Date.now() + (data.expires_in * 1000));
-      window.history.replaceState({}, document.title, window.location.pathname);
-      updateUIAuthorized();
+
+      // Attempt postMessage fallback
+      if (window.opener) {
+        try {
+          window.opener.postMessage(authData, '*');
+        } catch (e) {
+          console.log('postMessage blocked by cross-origin policy:', e);
+        }
+      }
+
+      // Close popup automatically
+      setTimeout(() => {
+        window.close();
+      }, 300);
     }
   } catch (err) {
     console.error('Error exchanging token:', err);
   }
 }
 
-// Listen for token message sent from popup window to embedded iframe
-window.addEventListener('message', (event) => {
+// Listen for messages via BroadcastChannel
+authChannel.onmessage = (event) => {
   if (event.data && event.data.type === 'spotify_auth_success') {
-    const { access_token, refresh_token, expires_in } = event.data;
+    applyAuthData(event.data);
+  }
+};
 
-    // Save received tokens inside the Notion iframe's scope
-    localStorage.setItem('access_token', access_token);
-    localStorage.setItem('refresh_token', refresh_token);
-    localStorage.setItem('expires_at', Date.now() + (expires_in * 1000));
-
+// Listen for localStorage changes across windows/frames
+window.addEventListener('storage', (event) => {
+  if (event.key === 'access_token' && event.newValue) {
     updateUIAuthorized();
   }
 });
+
+function applyAuthData(data) {
+  localStorage.setItem('access_token', data.access_token);
+  localStorage.setItem('refresh_token', data.refresh_token);
+  localStorage.setItem('expires_at', Date.now() + (data.expires_in * 1000));
+  updateUIAuthorized();
+}
 
 // Check existing login
 function checkExistingToken() {
@@ -142,7 +157,7 @@ function updateUIAuthorized() {
   getCurrentlyPlaying();
 
   if (!window.playingInterval) {
-    window.playingInterval = setInterval(getCurrentlyPlaying, 5000);
+    window.playingInterval = setInterval(getCurrentlyPlaying, 3000);
   }
 }
 
