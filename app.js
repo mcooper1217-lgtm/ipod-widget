@@ -97,7 +97,7 @@ async function handleCallback() {
       // Save directly to localStorage to trigger storage events
       localStorage.setItem('access_token', data.access_token);
       localStorage.setItem('refresh_token', data.refresh_token);
-      localStorage.setItem('expires_at', String(Date.now() + (data.expires_in * 1000)));
+      localStorage.setItem('expires_at', Date.now() + (data.expires_in * 1000));
 
       // Attempt postMessage fallback
       if (window.opener) {
@@ -121,7 +121,6 @@ async function handleCallback() {
 // Listen for messages via BroadcastChannel
 authChannel.onmessage = (event) => {
   if (event.data && event.data.type === 'spotify_auth_success') {
-    console.log('Received auth via BroadcastChannel', event.data);
     applyAuthData(event.data);
   }
 };
@@ -129,38 +128,22 @@ authChannel.onmessage = (event) => {
 // Listen for localStorage changes across windows/frames
 window.addEventListener('storage', (event) => {
   if (event.key === 'access_token' && event.newValue) {
-    console.log('storage event detected, access_token changed');
     updateUIAuthorized();
-  }
-});
-
-// NEW: Listen for postMessage from popup (fallback path used by popup)
-window.addEventListener('message', (event) => {
-  // Optional: verify origin to be more secure:
-  // const allowedOrigins = ['https://mcooper1217-lgtm.github.io'];
-  // if (!allowedOrigins.includes(event.origin)) return;
-
-  if (!event.data) return;
-
-  // event.data should be an object already (popup posts an object)
-  const data = event.data;
-  if (data.type === 'spotify_auth_success') {
-    console.log('Received auth via postMessage', data, 'origin:', event.origin);
-    applyAuthData(data);
   }
 });
 
 function applyAuthData(data) {
   localStorage.setItem('access_token', data.access_token);
   localStorage.setItem('refresh_token', data.refresh_token);
-  localStorage.setItem('expires_at', String(Date.now() + (data.expires_in * 1000)));
+  localStorage.setItem('expires_at', Date.now() + (data.expires_in * 1000));
+  removeNotionFallbackBanner();
   updateUIAuthorized();
 }
 
 // Check existing login
 function checkExistingToken() {
   const token = localStorage.getItem('access_token');
-  const expiresAt = parseInt(localStorage.getItem('expires_at'), 10) || 0;
+  const expiresAt = localStorage.getItem('expires_at');
 
   if (token && Date.now() < expiresAt) {
     updateUIAuthorized();
@@ -180,6 +163,108 @@ function updateUIAuthorized() {
 }
 
 document.addEventListener('DOMContentLoaded', handleCallback);
+
+// --- UX fallback helpers for embed environments (Notion) ---
+
+function showNotionFallbackBanner() {
+  if (document.getElementById('notion-fallback')) return;
+  const banner = document.createElement('div');
+  banner.id = 'notion-fallback';
+  banner.style = 'position:fixed;bottom:12px;left:12px;right:12px;padding:12px;background:#fff3cd;border:1px solid #ffeeba;border-radius:6px;z-index:9999;display:flex;align-items:center;gap:8px;font-family:system-ui, -apple-system, Roboto, "Segoe UI", Arial;';
+
+  banner.innerHTML = `
+    <div style="flex:1">The Connect flow may be blocked inside some embeds (Notion). If connecting doesn't finish, open the widget in a new tab to complete authentication.</div>
+    <div style="display:flex;gap:8px">
+      <button id="notion-open-tab" style="padding:6px 10px">Open in new tab</button>
+      <button id="notion-retry" style="padding:6px 10px">Retry Connect</button>
+      <button id="notion-close" style="padding:6px 10px">Dismiss</button>
+    </div>
+  `;
+
+  document.body.appendChild(banner);
+  document.getElementById('notion-open-tab').addEventListener('click', () => {
+    window.open(REDIRECT_URI, '_blank');
+  });
+  document.getElementById('notion-retry').addEventListener('click', () => {
+    // re-run the login flow
+    loginWithSpotifyAndDetect();
+  });
+  document.getElementById('notion-close').addEventListener('click', () => {
+    removeNotionFallbackBanner();
+  });
+}
+
+function removeNotionFallbackBanner() {
+  const el = document.getElementById('notion-fallback');
+  if (el) el.remove();
+}
+
+async function loginWithSpotifyAndDetect() {
+  // Start the popup
+  loginWithSpotify();
+
+  let success = false;
+  let bcHandler = null;
+  let timeoutId = null;
+
+  function onSuccess() {
+    success = true;
+    cleanup();
+  }
+
+  function messageHandler(e) {
+    try {
+      if (e && e.data && e.data.type === 'spotify_auth_success') {
+        onSuccess();
+      }
+    } catch (err) { /* ignore malformed messages */ }
+  }
+
+  function storageHandler(e) {
+    if (e && e.key === 'access_token' && e.newValue) {
+      onSuccess();
+    }
+  }
+
+  // BroadcastChannel listener (reuse authChannel if available)
+  try {
+    bcHandler = (ev) => {
+      if (ev && ev.data && ev.data.type === 'spotify_auth_success') {
+        onSuccess();
+      }
+    };
+    authChannel.addEventListener('message', bcHandler);
+  } catch (e) {
+    // ignore if unavailable
+  }
+
+  window.addEventListener('message', messageHandler);
+  window.addEventListener('storage', storageHandler);
+
+  timeoutId = setTimeout(() => {
+    if (!success) {
+      showNotionFallbackBanner();
+    }
+    cleanup();
+  }, 6000);
+
+  function cleanup() {
+    window.removeEventListener('message', messageHandler);
+    window.removeEventListener('storage', storageHandler);
+    try { if (bcHandler) authChannel.removeEventListener('message', bcHandler); } catch (e) {}
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
+
+// Attach enhanced login handler to login button (if present)
+document.addEventListener('DOMContentLoaded', () => {
+  const loginBtn = document.getElementById('login-btn');
+  if (loginBtn) {
+    // prefer the detect wrapper so embeds get the fallback
+    loginBtn.removeEventListener('click', loginWithSpotify);
+    loginBtn.addEventListener('click', loginWithSpotifyAndDetect);
+  }
+});
 
 // Safe Spotify API Request Helper
 async function spotifyFetch(endpoint, method = 'GET', body = null) {
