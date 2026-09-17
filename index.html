@@ -1,42 +1,32 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>iPod Spotify Widget</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="ipod">
-    <!-- Left Screen Display -->
-    <div class="screen">
-      <div class="header">
-        <span>Now Playing</span>
-        <span id="battery">🔋</span>
+  <main class="ipod" aria-label="iPod-style Spotify playlist player">
+    <section class="screen" id="screen">
+      <div class="screen-loading" id="screen-loading">
+        <div class="spotify-mark">♫</div>
+        <strong>Your playlist</strong>
+        <span id="status">Loading Spotify…</span>
       </div>
-      
-      <div class="screen-content">
-        <div class="album-art-container">
-          <img id="album-art" src="https://via.placeholder.com/100" alt="Album Art" />
-        </div>
-        <div class="song-details">
-          <p id="track-name">Not Playing</p>
-          <p id="artist-name">Connect Spotify</p>
-          <button id="login-btn" class="login-btn" onclick="loginWithSpotify()">Connect</button>
-        </div>
-      </div>
-    </div>
+      <div id="embed-iframe" aria-label="Spotify playlist player"></div>
+    </section>
 
-    <!-- Right Click Wheel -->
-    <div class="wheel">
-      <button class="wheel-btn menu-btn" onclick="syncDeviceAndPlay()">MENU</button>
-      <button class="wheel-btn prev-btn" onclick="previousTrack()">⏮</button>
-      <button class="wheel-btn next-btn" onclick="nextTrack()">⏭</button>
-      <button class="wheel-btn play-btn" onclick="togglePlay()">⏯</button>
-      <div class="center-btn" onclick="getCurrentlyPlaying()"></div>
-    </div>
-  </div>
+    <section class="wheel" aria-label="Playback controls">
+      <button class="wheel-btn menu-btn" id="menu-btn" aria-label="Open playlist in Spotify">MENU</button>
+      <button class="wheel-btn prev-btn" id="prev-btn" aria-label="Previous track">◀◀</button>
+      <button class="wheel-btn next-btn" id="next-btn" aria-label="Next track">▶▶</button>
+      <button class="wheel-btn play-btn" id="play-btn" aria-label="Play or pause">▶ ||</button>
+      <button class="center-btn" id="center-btn" aria-label="Play or pause">SELECT</button>
+    </section>
+  </main>
 
+  <script src="https://open.spotify.com/embed/iframe-api/v1" async></script>
   <script src="app.js"></script>
 </body>
 </html>
